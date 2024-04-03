@@ -56,6 +56,7 @@ doc.add_paragraph('这是用“标书标题二”样式的标题', style='标书
 doc.add_paragraph('这是用“标书标题三”样式的标题', style='标书标题三')
 doc.add_paragraph('这是用“标书标题四”样式的标题', style='标书标题四')
 doc.add_paragraph('这是一段使用“标书正文”样式的文本。', style='标书正文')
+doc.add_paragraph('2024.04.03', style='标书正文')
 
 #第一页插入目录引用
 
