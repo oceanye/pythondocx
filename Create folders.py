@@ -1,3 +1,4 @@
+import glob
 import os
 
 
@@ -44,6 +45,18 @@ base_path = 'Z:/BIM 内部资料/2024 03 29 项目标书自动化生成调研/�
 
 # 创建文件夹
 create_folders_from_markdown_file(md_file_path, base_path)
+
+#获取上面代码所创建的文件夹目录
+
+def traverse_directory(path):
+    for root, dirs, files in os.walk(path):
+        print("当前目录：", root)
+        print("子目录：", dirs)
+        print("文件：", files)
+        print("----------")
+
+if __name__ == "__main__":
+    traverse_directory("Z:\BIM 内部资料\ 2024 03 29 项目标书自动化生成调研\初步设计说明案例\项目初步设计文本")
 
 """#用于检测二级标题的数量书否正确
 def count_and_collect_markdown_levels(md_file_path):
