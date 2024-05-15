@@ -77,69 +77,67 @@ for keyword, folder_path in keyword_to_folder.items():
 # 现在可以使用这个字典来处理文档内容
 # 实现按标题建立文件夹，且拆分文档段落
 
-import os  # 导入操作系统功能模块，用于文件和目录操作
-from docx import Document  # 从docx模块导入Document类，用于操作Word文档
-from docx.shared import Pt  # 从docx.shared导入Pt，用于设置字体大小
-from docx.oxml.ns import qn  # 从docx.oxml.ns导入qn，用于设置Word中的字体属性以支持中文
+import os
+from docx import Document
+from docx.shared import Pt
+from docx.oxml.ns import qn
 
 def sanitize_filename(filename):
-    # 定义一个函数来清理文件名中的非法字符
-    invalid_chars = '<>:"/\\|?*'  # 定义Windows系统中文件名不允许包含的字符
+    invalid_chars = '<>:"/\\|?*'
     for char in invalid_chars:
-        filename = filename.replace(char, '_')  # 将非法字符替换为下划线
-    return filename  # 返回清理后的文件名
+        filename = filename.replace(char, '_')
+    return filename
 
 def save_document(text, path, filename):
-    # 定义一个函数来保存文档
-    filename = sanitize_filename(filename)  # 清理文件名中的非法字符
-    doc = Document()  # 创建一个新的Word文档对象
-    style = doc.styles['Normal']  # 获取文档的默认样式
-    font = style.font  # 获取样式中的字体设置
-    font.name = '宋体'  # 设置字体为宋体
-    font.size = Pt(12)  # 设置字体大小为12磅
-    style.paragraph_format.first_line_indent = Pt(24)  # 设置段落首行缩进为24磅
-
-    font.element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')  # 确保中文字符能正确显示
-    text = text.lstrip()  # 清除文本开始部分的空白字符
-    doc.add_paragraph(text, style=style)  # 向文档中添加段落
-
-    os.makedirs(path, exist_ok=True)  # 确保文件路径存在，如果不存在则创建
-    doc.save(os.path.join(path, f"{filename}.docx"))  # 将文档保存到指定路径
+    filename = sanitize_filename(filename)
+    doc = Document()
+    style = doc.styles['Normal']
+    font = style.font
+    font.name = '宋体'
+    font.size = Pt(12)
+    style.paragraph_format.first_line_indent = Pt(24)
+    font.element.rPr.rFonts.set(qn('w:eastAsia'), '宋体')
+    text = text.lstrip()
+    doc.add_paragraph(text, style=style)
+    os.makedirs(path, exist_ok=True)
+    full_path = os.path.join(path, f"{filename}.docx")
+    try:
+        doc.save(full_path)
+    except Exception as e:
+        print(f"Error saving document {full_path}: {e}")
 
 def process_word_document(file_path):
-    # 定义一个函数来处理Word文档
-    doc = Document(file_path)  # 读取指定路径的Word文档
-    current_path = []  # 初始化当前路径列表
-    base_path = "output"  # 设置基本输出路径
-    content_buffer = ""  # 初始化内容缓冲区
-    last_heading = ""  # 初始化最后一个标题变量
+    doc = Document(file_path)
+    current_path = []
+    base_path = "output"
+    content_buffer = ""
+    last_heading = ""
 
-    for para in doc.paragraphs:  # 遍历文档中的所有段落
-        style = para.style.name  # 获取段落的样式名
-        if 'Heading' in style:  # 如果样式名包含'Heading'，表示这是一个标题
-            if content_buffer:  # 如果内容缓冲区不为空
-                content_buffer = content_buffer.lstrip()  # 清除缓冲区开始的空白字符
-                path = os.path.join(base_path, *current_path)  # 构造文件保存路径
-                filename = content_buffer[:6] if len(content_buffer) >= 6 else content_buffer  # 从缓冲区内容生成文件名
-                save_document(content_buffer, path, filename)  # 保存文档
-                content_buffer = ""  # 清空内容缓冲区
+    for para in doc.paragraphs:
+        style = para.style.name
+        if 'Heading' in style:
+            if content_buffer:
+                path = os.path.join(base_path, *current_path)
+                filename = last_heading[:50]  # Use first 50 characters of last heading as filename
+                save_document(content_buffer, path, filename)
+                content_buffer = ""
+            level = int(style.split()[-1])
+            current_path = current_path[:level-1]
+            last_heading = sanitize_filename(para.text.strip())
+            current_path.append(last_heading)
+        elif 'Body Text' in style or 'Normal' in style:
+            content_buffer += para.text + "\n"
 
-            level = int(style.split()[-1])  # 获取标题的层级
-            current_path = current_path[:level-1]  # 根据标题层级调整当前路径
-            last_heading = para.text.strip().replace(':', '').replace('/', '').replace('\\', '')  # 清理标题文本
-            current_path.append(last_heading)  # 将清理后的标题添加到路径中
+    if content_buffer:
+        path = os.path.join(base_path, *current_path)
+        filename = last_heading[:50]  # Use first 50 characters of last heading as filename
+        save_document(content_buffer, path, filename)
 
-        elif 'Body Text' in style or 'Normal' in style:  # 如果样式是正文或默认样式
-            content_buffer += para.text + "\n"  # 将段落文本添加到内容缓冲区
+if __name__ == "__main__":
+    process_word_document("通用扩初模板.docx")
 
-    if content_buffer:  # 处理文档最后一部分的内容
-        content_buffer = content_buffer.lstrip()  # 清除缓冲区开始的空白字符
-        path = os.path.join(base_path, *current_path)  # 构造文件保存路径
-        filename = content_buffer[:6] if len(content_buffer) >= 6 else content_buffer  # 从缓冲区内容生成文件名
-        save_document(content_buffer, path, filename)  # 保存文档
 
-if __name__ == "__main__":  # 当脚本作为主程序运行时
-    process_word_document("通用扩初模板.docx")  # 调用处理文档的函数
+
 
 
 
