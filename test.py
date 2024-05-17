@@ -145,7 +145,7 @@ def read_word():
 if __name__ == '__main__':
     read_word()
 
-
+"""按照标题序号选择要保留的段落"""
 
 from docx import Document
 from docx.text.paragraph import Paragraph
@@ -192,12 +192,250 @@ def delete_content_between_headings(doc_path, start_heading_index, end_heading_i
     # 删除标记的元素
     for element in elements_to_delete:
         delete_element(element)
+    # 在文档最后添加一个空格，再保存文档
 
     doc.save('modified_document.docx')
 
-delete_content_between_headings('人工智能 - 副本.docx', 1, 2)
+
+# 调用函数
+
+delete_content_between_headings('人工智能 - 副本.docx', 3, 4)
 
 
+"""合并文档，图片合不了，段落样式改变"""
 
+from docx import Document
+import os
+
+
+def merge_word_documents(folder_path, output_path):
+    # 创建一个新的Word文档
+    merged_document = Document()
+
+    # 遍历文件夹中的每个Word文档
+    for filename in os.listdir(folder_path):
+        if filename.endswith(".docx"):
+            file_path = os.path.join(folder_path, filename)
+
+            # 打开当前的Word文档
+            current_document = Document(file_path)
+
+            # 将当前文档的内容复制到合并文档中
+            for element in current_document.element.body:
+                merged_document.element.body.append(element)
+
+    # 保存合并后的文档
+    merged_document.save(output_path)
+
+
+# 程序入口
+if __name__ == "__main__":
+    folder_path = "output"
+    output_path = "merged_document.docx"
+    merge_word_documents(folder_path, output_path)
+
+
+"""用spire.doc库合并文档的两个方法"""
+
+# 方法1_通过插入文件来合并Word文档：使用该方法合并Word文档时，插入的文档默认从新的一页开始显示。
+from spire.doc import *
+from spire.doc.common import *
+
+# 创建Document对象
+doc = Document()
+
+# 加载一个 Word 文档
+doc.LoadFromFile("模板.docx")
+
+# 将需合并的Word文档的内容插入到当前文档中
+doc.InsertTextFromFile("new_copy.docx", FileFormat.Auto)
+doc.InsertTextFromFile("人工智能.docx", FileFormat.Auto)
+
+# 保存生成文档
+doc.SaveToFile("合并Word文档.docx")
+doc.Close()
+
+#  方法2_通过复制内容合并 Word 文档：使用该方法合并Word文档时，各文档将紧接上一个文档的末尾。
+from spire.doc import *
+from spire.doc.common import *
+
+# 加载第一个Word文档
+doc1 = Document()
+doc1.LoadFromFile("模板.docx")
+
+# 将其余要合并的Word文档添加到列表中
+files = []
+files.append("new_copy.docx")
+files.append("人工智能.docx")
+
+# 获取第一个文档的最后一个节
+lastSection = doc1.Sections.get_Item(doc1.Sections.Count - 1)
+
+# 遍历列表中的文档
+for file in files:
+    doc = Document()
+    doc.LoadFromFile(file)
+
+    # 遍历每个文档中的各个节
+    for i in range(doc.Sections.Count):
+        section = doc.Sections.get_Item(i)
+
+        # 遍历各个节中的子对象
+        for j in range(section.Body.ChildObjects.Count):
+            obj = section.Body.ChildObjects.get_Item(j)
+
+            # 将每个文档中的子对象添加到第一个文档的最后一个节中
+            lastSection.Body.ChildObjects.Add(obj.Clone())
+
+# 保存合并后的文档
+doc1.SaveToFile("合并Word文档2.docx")
+doc1.Close()
+doc.Close()
+
+from spire.doc import *
+from spire.doc.common import *
+
+# 创建一个Document对象
+document = Document()
+
+# 加载名为"示例文档.docx"的Word文档
+document.LoadFromFile("通用扩初模板.docx")
+
+# 遍历文档的每个章节（Section）
+for i in range(document.Sections.Count):
+    # 获取当前索引的章节（Section）
+    section = document.Sections.get_Item(i)
+
+    # 构造结果文件的文件名，包括路径和文件名，格式为："按分节符拆分/结果文件_编号.docx"
+    result = "按分节符拆分/" + "结果文件_{0}.docx".format(i + 1)
+
+    # 创建一个新的Word文档对象来存储当前部分的内容
+    newWord = Document()
+
+    # 将当前章节（Section）的克隆添加到新Word文档的Sections中
+    newWord.Sections.Add(section.Clone())
+
+    # 将新Word文档保存到指定的文件名
+    newWord.SaveToFile(result)
+    newWord.Close()
+
+document.Dispose()
+
+from spire.doc import *
+from spire.doc.common import *
+
+# 创建一个Document对象
+document = Document()
+
+# 加载名为"示例文档.docx"的Word文档
+document.LoadFromFile("人工智能 - 副本.docx")
+
+# 初始化新文档和章节索引
+newWord = None
+file_index = 0
+
+# 遍历文档的每个段落
+for section in document.Sections:
+    for paragraph in section.Paragraphs:
+        # 检查段落样式是否为"Heading"
+        if paragraph.StyleName.startswith("Heading"):
+            # 如果当前有一个打开的文档，先保存并关闭它
+            if newWord is not None:
+                result = f"按分节符拆分/结果文件_{file_index}.docx"
+                newWord.SaveToFile(result)
+                newWord.Close()
+
+            # 创建一个新的文档并增加章节索引
+            newWord = Document()
+            file_index += 1
+
+        # 如果有打开的文档，将当前段落添加到新文档中
+        if newWord is not None:
+            new_section = newWord.AddSection()
+            new_section.Paragraphs.Add(paragraph.Clone())
+
+# 保存并关闭最后一个文档
+if newWord is not None:
+    result = f"按分节符拆分/结果文件_{file_index}.docx"
+    newWord.SaveToFile(result)
+    newWord.Close()
+
+document.Dispose()
+
+from pathlib import Path
+from docxcompose.composer import Composer
+from docx import Document
+
+# 获取所有要合并的.docx文件的路径
+result = []
+for uu in Path('output').rglob('*.docx'):
+    result.append(uu.resolve())
+
+print("Files to merge:", result)
+
+# 确保找到的文件列表不为空
+if not result:
+    print("No documents found to merge.")
+    exit()
+
+# 设置主文档
+filename_master = result[0]
+master = Document(filename_master)
+composer = Composer(master)
+
+# 遍历余下的文件，并将它们追加到主文档
+for file_path in result[1:]:
+    doc_temp = Document(file_path)
+    doc_temp.add_page_break()
+    composer.append(doc_temp)
+
+# 保存合并后的文档
+composer.save("merged_document.docx")
+print("Documents successfully merged into 'merged_document.docx'")
+
+import win32com.client as win32
+from win32com.client import constants
+import os
+
+# 打开word应用程序
+word = win32.gencache.EnsureDispatch('Word.Application')
+# 是否可视化
+word.Visible = 0
+# 源文件路径
+file_path = '人工智能 - 副本.docx'
+# 打开
+doc = word.Documents.Open(file_path)
+# 光标start的查找
+# 赋值对象
+search_range = doc.Content
+# 查找内容
+search_range.Find.Execute(FindText="标题一")
+# 选中查找到的内容
+search_range.Select()
+# 光标左移
+word.Selection.MoveLeft()
+# 将光标位置赋予start
+start = word.Selection.Start.numerator
+print(start)
+
+# 光标end的查找  同上
+search_range = doc.Content
+search_range.Find.Execute(FindText="标题二")
+search_range.Select()
+word.Selection.MoveLeft()
+end = word.Selection.Start.numerator
+print(end)
+
+# 选取光标start到光标end的内容
+doc.Range(start, end).Select()
+# 复制
+word.Selection.Copy()
+# 粘贴的目标文件
+doc_new = word.Documents.Open('B.docx')
+# 粘贴
+doc_new.Application.ActiveDocument.Range().Paste()
+# 关闭两个文件
+doc_new.Close()
+doc.Close()
 
 
