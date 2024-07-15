@@ -3,7 +3,7 @@
               通过文件储存路径检索到文档中标题位置
               删除除这个标题下章节的外的所有内容'
               实现文档按标题拆分"""
-
+import multiprocessing
 import os
 from shutil import copyfile
 from docx import Document
@@ -108,34 +108,35 @@ def delete_content_between_headings(doc_path, start_heading_index, end_heading_i
 
 
 
+def process_document(file_path):
+    # 加载Word文档
+    doc = Document(file_path)
+
+    # 提取文档中所有标题的文本
+    headings = [para.text for para in doc.paragraphs if 'Heading' in para.style.name]
+
+    # 找到start_heading在文档中的索引
+    path_parts = file_path.split(os.sep)
+    start_heading = path_parts[-2]  # 假设目录名称即为start_heading
+    start_heading_index = headings.index(start_heading)
+
+    # 初始化下一个标题的索引为start_heading_index之后的索引
+    next_heading_index = start_heading_index + 1
+
+    delete_content_between_headings(file_path, start_heading_index+1, next_heading_index+1)
+
 def process_documents(base_path):
-    # 遍历base_path指定的目录及其所有子目录
+    # 收集所有需要处理的文档路径
+    file_paths = []
     for root, dirs, files in os.walk(base_path):
         for file in files:
-            # 检查文件是否以.docx结尾，并且文件名是否为"document.docx"
             if file.endswith(".docx") and file == "document.docx":
-                file_path = os.path.join(root, file)  # 构建出文档的完整路径
+                file_path = os.path.join(root, file)
+                file_paths.append(file_path)
 
-                # 加载Word文档
-                doc = Document(file_path)  # 假设Document是能够读取.docx文件的类
-
-                # 提取文档中所有标题的文本
-                headings = [para.text for para in doc.paragraphs if 'Heading' in para.style.name]
-
-                # 找到start_heading在文档中的索引
-                path_parts = root.split(os.sep)  # 将目录路径拆分为部分
-                # print (path_parts)
-                start_heading = path_parts[-1]  # 假设目录名称即为start_heading
-                # print(start_heading)
-                #确认start_heading是在headings列表中的第几个索引
-                # print(headings)
-                start_heading_index = headings.index(start_heading)
-                # print(start_heading_index)
-
-                # 初始化下一个标题的索引为start_heading_index之后的索引
-                next_heading_index = start_heading_index + 1
-
-                delete_content_between_headings(file_path, start_heading_index+1, next_heading_index+1)
+    # 使用多进程处理文档
+    with multiprocessing.Pool() as pool:
+        pool.map(process_document, file_paths)
 
 
 
